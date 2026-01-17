@@ -82,12 +82,27 @@ class DepthView(
                 // Convert to data structures that persist outside the GL/ARCore lifecycle
                 val depthShorts = extract16BitDepth(depthImage)
                 val rgbBitmap = imageToBitmap(cameraImage)
-                val width = depthImage.width
-                val height = depthImage.height
                 
-                // Get intrinsics
+                val depthWidth = depthImage.width
+                val depthHeight = depthImage.height
+                
+                // Get intrinsics from the high-res camera texture
                 val intrinsics = frame.camera.textureIntrinsics
-                val metadata = "fx:${intrinsics.focalLength[0]},fy:${intrinsics.focalLength[1]},cx:${intrinsics.principalPoint[0]},cy:${intrinsics.principalPoint[1]}"
+                val textureDims = intrinsics.imageDimensions // [width, height] of the RGB stream
+                
+                // Calculate scaling factors to map intrinsics to the low-res depth map
+                // We cast to Float to ensure floating point division
+                val scaleW = depthWidth.toFloat() / textureDims[0].toFloat()
+                val scaleH = depthHeight.toFloat() / textureDims[1].toFloat()
+
+                // Scale the focal length (fx, fy) and principal point (cx, cy)
+                val fx = intrinsics.focalLength[0] * scaleW
+                val fy = intrinsics.focalLength[1] * scaleH
+                val cx = intrinsics.principalPoint[0] * scaleW
+                val cy = intrinsics.principalPoint[1] * scaleH
+                
+                // Save the SCALED values into metadata
+                val metadata = "fx:$fx,fy:$fy,cx:$cx,cy:$cy"
 
                 // Close native images immediately to free up ARCore buffers 
                 depthImage.close()
@@ -106,7 +121,7 @@ class DepthView(
                         // Perform the heavy saving operations on the IO thread
                         TiffSaver.saveBitmap(file.absolutePath, rgbBitmap, options)
                         
-                        val depthBitmap = packDepthIntoBitmap(depthShorts, width, height)
+                        val depthBitmap = packDepthIntoBitmap(depthShorts, depthWidth, depthHeight)
                         val appendSuccess = TiffSaver.appendBitmap(file.absolutePath, depthBitmap, options)
 
                         val finalSize = file.length()
