@@ -190,6 +190,9 @@ class DepthView(
         try {
             session = Session(context).apply {
                 val arConfig = Config(this)
+
+                arConfig.focusMode = Config.FocusMode.AUTO
+
                 if (isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
                     arConfig.depthMode = Config.DepthMode.AUTOMATIC 
                 }
