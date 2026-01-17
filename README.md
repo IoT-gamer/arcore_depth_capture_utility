@@ -48,7 +48,9 @@ The depth values in the 16-bit depth map represent the distance from the camera 
 $$Z_{(mm)} = (Red \times 256) + Green$$
 2. Coordinates in centimeters:
 $$Z_{cm} = Z_{mm} / 10.0$$
+
 $$X_{cm} = (u - cx) \times Z_{cm} / fx$$
+
 $$Y_{cm} = (v - cy) \times Z_{cm} / fy$$
 
 
@@ -57,4 +59,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 🙏 Acknowledgements
 - [ARCore](https://developers.google.com/ar) - For providing the Raw Depth API.
+- [ARCore Raw Depth API Codelab](https://github.com/google-ar/codelab-raw-depth-api) - For foundational knowledge on using the Raw Depth API.
 - [Android-TiffBitmapFactory deckerst Fork](https://github.com/deckerst/Android-TiffBitmapFactory) - For TIFF saving support.
