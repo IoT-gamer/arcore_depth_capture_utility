@@ -75,14 +75,18 @@ class DepthView(
             try {
                 val frame = currentSession.update()
                 
-                // Acquire images and extract data immediately on the GL thread
+                // Acquire all images
                 val depthImage = frame.acquireRawDepthImage16Bits()
+                val confidenceImage = frame.acquireRawDepthConfidenceImage()
                 val cameraImage = frame.acquireCameraImage()
                 
-                // Convert to data structures that persist outside the GL/ARCore lifecycle
+                // Extract data to Bitmaps/Arrays
                 val depthShorts = extract16BitDepth(depthImage)
                 val rgbBitmap = imageToBitmap(cameraImage)
                 
+                // Convert Confidence to Bitmap
+                val confidenceBitmap = confidenceToBitmap(confidenceImage)
+
                 val depthWidth = depthImage.width
                 val depthHeight = depthImage.height
                 
@@ -106,6 +110,7 @@ class DepthView(
 
                 // Close native images immediately to free up ARCore buffers 
                 depthImage.close()
+                confidenceImage.close()
                 cameraImage.close()
 
                 // Switch to a background thread for heavy I/O and TIFF encoding
@@ -119,10 +124,16 @@ class DepthView(
                         }
 
                         // Perform the heavy saving operations on the IO thread
+
+                        // Page 0: RGB
                         TiffSaver.saveBitmap(file.absolutePath, rgbBitmap, options)
                         
+                        // Page 1: Depth
                         val depthBitmap = packDepthIntoBitmap(depthShorts, depthWidth, depthHeight)
                         val appendSuccess = TiffSaver.appendBitmap(file.absolutePath, depthBitmap, options)
+
+                        // Page 2: Confidence
+                        TiffSaver.appendBitmap(file.absolutePath, confidenceBitmap, options)
 
                         val finalSize = file.length()
                         
@@ -195,6 +206,42 @@ class DepthView(
             pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8)
         }
         bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+        return bitmap
+    }
+
+    private fun confidenceToBitmap(image: android.media.Image): Bitmap {
+        val plane = image.planes[0]
+        val buffer = plane.buffer
+        val width = image.width
+        val height = image.height
+        val pixelStride = plane.pixelStride
+        val rowStride = plane.rowStride
+        
+        // Create an empty bitmap
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        
+        // Prepare pixel array
+        val pixels = IntArray(width * height)
+        
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                // Calculate the offset in the byte buffer
+                val offset = y * rowStride + x * pixelStride
+                
+                // Read the 8-bit confidence value (0-255)
+                // We mask with 0xFF to treat the signed byte as unsigned
+                val confidence = buffer.get(offset).toInt() and 0xFF
+                
+                // Pack into ARGB (Grayscale)
+                // Alpha = 255 (Opaque), R=G=B=confidence
+                pixels[y * width + x] = (0xFF shl 24) or 
+                                      (confidence shl 16) or 
+                                      (confidence shl 8) or 
+                                      confidence
+            }
+        }
+        
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
         return bitmap
     }
 

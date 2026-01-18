@@ -1,12 +1,14 @@
 # ARCore 16-bit Raw Depth Capture Utility
 
-This Flutter application is a specialized utility designed to capture high-fidelity environmental data using the [**ARCore Raw Depth API**](https://developers.google.com/ar/develop/java/depth/raw-depth). It exports multi-layer TIFF files containing aligned RGB images and 16-bit depth maps.
+This Flutter application is a specialized utility designed to capture high-fidelity environmental data using the [**ARCore Raw Depth API**](https://developers.google.com/ar/develop/java/depth/raw-depth). It exports multi-layer TIFF files containing aligned RGB images, 16-bit depth maps, and confidence maps.
 
 ## 🚀 Key Features
 * **16-bit Raw Depth Acquisition:** Leverages `acquireRawDepthImage16Bits()` to preserve millimeter-level precision.
+* **Confidence Map Integration:** Includes an 8-bit confidence map as a separate layer to assist in filtering noise and "flying pixels".
 * **Multi-Layer TIFF Export:** Saves data into a single container:
     * **Layer 0:** 8-bit RGB Image for visualization and segmentation.
     * **Layer 1:** 16-bit Depth Map (packed into RG channels) for mathematical distance calculations.
+    * **Layer 2:** 8-bit Confidence Map (0-255) where higher values indicate higher certainty.
 * **Metadata Integration:** Automatically embeds Camera Intrinsics ($fx, fy, cx, cy$) into the TIFF `imageDescription` tag.
 * **User-Defined Storage:** Uses `FilePicker` to allow users to select specific save locations rather than defaulting to the standard gallery.
 
@@ -53,6 +55,7 @@ $$X_{cm} = (u - cx) \times Z_{cm} / fx$$
 
 $$Y_{cm} = (v - cy) \times Z_{cm} / fy$$
 
+**Note:** Ideally, points should be filtered where the Confidence Map value is low (e.g., < 190) to remove noise.
 
 ## 📄 License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
